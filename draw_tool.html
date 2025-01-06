@@ -24,20 +24,23 @@
       cursor: pointer;
       border: none;
       border-radius: 5px;
+      transition: background-color 0.3s;
     }
     #drawButton {
       background-color: #28a745;
       color: white;
     }
+    #drawButton:hover:not(:disabled) {
+      background-color: #218838;
+    }
     #resetButton {
       background-color: #dc3545;
       color: white;
     }
-    #drawButton:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
+    #resetButton:hover:not(:disabled) {
+      background-color: #c82333;
     }
-    #resetButton:disabled {
+    #drawButton:disabled, #resetButton:disabled {
       background-color: #ccc;
       cursor: not-allowed;
     }
@@ -57,12 +60,18 @@
       font-size: 1.1em;
       display: flex;
       align-items: center;
+      transition: background-color 0.5s, transform 0.3s;
+    }
+    #drawnNames li.highlight {
+      background-color: #d1ecf1;
+      transform: scale(1.05);
     }
     #drawnNames li span.number {
       display: inline-block;
       width: 30px;
       font-weight: bold;
       color: #007bff;
+      margin-right: 10px;
     }
     #message {
       margin-top: 20px;
@@ -77,7 +86,7 @@
 
   <div class="btnArea">
     <button id="drawButton">抽選する</button>
-    <button id="resetButton">リセット</button>
+    <button id="resetButton" disabled>リセット</button>
   </div>
 
   <ul id="drawnNames">
@@ -142,34 +151,45 @@
       const randomIndex = Math.floor(Math.random() * availableNames.length);
       const selectedName = availableNames[randomIndex];
 
-      // 抽選済みリストに追加
-      drawnNames.push(selectedName);
+      // 抽選済みリストの先頭に追加
+      drawnNames.unshift(selectedName);
 
-      // 抽選結果を画面に表示
+      // 抽選結果を画面に表示（最新を上に）
       const listItem = document.createElement('li');
 
-      // 抽選順に番号を付ける
+      // 抽選順に番号を付ける（最新が1番）
       const numberSpan = document.createElement('span');
       numberSpan.className = 'number';
-      numberSpan.textContent = drawnNames.length + '.';
+      numberSpan.textContent = (1) + '.'; // 最新は1
 
       const nameSpan = document.createElement('span');
       nameSpan.textContent = selectedName;
 
       listItem.appendChild(numberSpan);
       listItem.appendChild(nameSpan);
-      drawnNamesList.appendChild(listItem);
 
-      // 抽選結果をローカルストレージに保存
+      // 抽選リストの先頭に挿入
+      drawnNamesList.insertBefore(listItem, drawnNamesList.firstChild);
+
+      // 抽選結果に視覚的強調を適用
+      listItem.classList.add('highlight');
+      setTimeout(() => {
+        listItem.classList.remove('highlight');
+      }, 1000); // 1秒後に強調を解除
+
+      // 抽選済み名前をローカルストレージに保存
       saveDrawnNames();
 
       // 全員抽選されたかチェック
       if (drawnNames.length >= nameList.length) {
         drawButton.disabled = true;
         messageDiv.textContent = "すべての名前が抽選されました。";
+      } else {
+        messageDiv.textContent = "";
       }
 
       updateButtons();
+      updateNumbering();
     });
 
     // ▼ リセットボタンのクリックイベント
@@ -192,7 +212,7 @@
 
       // ボタンの状態を更新
       drawButton.disabled = false;
-      updateButtons();
+      resetButton.disabled = true;
     });
 
     // ▼ 抽選済み名前をローカルストレージから読み込む
@@ -209,7 +229,7 @@
       drawnNames.forEach((name, index) => {
         const listItem = document.createElement('li');
 
-        // 抽選順に番号を付ける
+        // 抽選順に番号を付ける（最新が1番）
         const numberSpan = document.createElement('span');
         numberSpan.className = 'number';
         numberSpan.textContent = (index + 1) + '.';
@@ -251,6 +271,15 @@
       } else {
         drawButton.disabled = true;
       }
+    }
+
+    // ▼ 抽選結果の番号を更新する（最新が1番）
+    function updateNumbering() {
+      const listItems = drawnNamesList.querySelectorAll('li');
+      listItems.forEach((item, index) => {
+        const numberSpan = item.querySelector('span.number');
+        numberSpan.textContent = (index + 1) + '.';
+      });
     }
 
   </script>
