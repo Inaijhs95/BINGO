@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>名前抽選ツール</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+    }
+    #drawButton {
+      padding: 10px 20px;
+      font-size: 1.2em;
+      margin: 20px 0;
+      cursor: pointer;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    #drawButton:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    #drawnNames {
+      list-style-type: none;
+      padding: 0;
+      max-width: 400px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    #drawnNames li {
+      background-color: #fff;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      font-size: 1.1em;
+    }
+    #message {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: #d9534f;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>名前抽選ツール</h1>
+
+  <button id="drawButton">抽選する</button>
+
+  <ul id="drawnNames">
+    <!-- 抽選された名前がここに表示されます -->
+  </ul>
+
+  <div id="message"></div>
+
+  <script>
+    // ▼ 名前リスト
+    const nameList = [
+      "けいじろう",
+      "こうすけ",
+      "こうへい",
+      "だいすけ",
+      "たつや",
+      "とおる",
+      "のぞむ",
+      "ひかる",
+      "ゆうすけ",
+      "ゆうた",
+      "りょうすけ",
+      "るい",
+      "けいた", 
+      "ともひろ",
+      "ひろふみ", 
+      "しょうた",
+    ];
+
+    // ▼ 抽選済み名前リスト
+    let drawnNames = [];
+
+    // ▼ DOM要素取得
+    const drawButton = document.getElementById('drawButton');
+    const drawnNamesList = document.getElementById('drawnNames');
+    const messageDiv = document.getElementById('message');
+
+    // ▼ 抽選ボタンのクリックイベント
+    drawButton.addEventListener('click', () => {
+      if (drawnNames.length >= nameList.length) {
+        // すでに全員抽選済み
+        drawButton.disabled = true;
+        messageDiv.textContent = "すべての名前が抽選されました。";
+        return;
+      }
+
+      // 抽選可能な名前リストを作成
+      const availableNames = nameList.filter(name => !drawnNames.includes(name));
+
+      // ランダムに1つ選ぶ
+      const randomIndex = Math.floor(Math.random() * availableNames.length);
+      const selectedName = availableNames[randomIndex];
+
+      // 抽選済みリストに追加
+      drawnNames.push(selectedName);
+
+      // 抽選結果を画面に表示
+      const listItem = document.createElement('li');
+      listItem.textContent = selectedName;
+      drawnNamesList.appendChild(listItem);
+
+      // 全員抽選されたかチェック
+      if (drawnNames.length >= nameList.length) {
+        drawButton.disabled = true;
+        messageDiv.textContent = "すべての名前が抽選されました。";
+      }
+    });
+  </script>
+
+</body>
+</html>
