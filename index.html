@@ -207,4 +207,239 @@ function makeOptions(names) {
 /** ▼ ローカルストレージから読み込んで画面に反映 */
 function loadState() {
   const storedNames = JSON.parse(localStorage.getItem(STORAGE_KEY_NAMES));
-  if (storedNames && Array.isArray(storedNames) && storedNames.length === CEL
+  if (storedNames && Array.isArray(storedNames) && storedNames.length === CELL_COUNT) {
+    const selects = board.querySelectorAll("select");
+    for (let i = 0; i < CELL_COUNT; i++) {
+      selects[i].value = storedNames[i];
+    }
+  }
+
+  const locked = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED));
+  if (locked === true) {
+    disableAllSelects();
+  }
+
+  const marks = JSON.parse(localStorage.getItem(STORAGE_KEY_MARKS));
+  if (marks && Array.isArray(marks) && marks.length === CELL_COUNT) {
+    for (let i = 0; i < CELL_COUNT; i++) {
+      if (marks[i]) {
+        addMaruImage(i);
+      }
+    }
+  }
+
+  // 一度ロードしたら重複禁止のUIを更新
+  updateSelectsDisableState();
+}
+
+/** ▼ セレクト変更時（重複チェック＆ストレージ反映） */
+function onSelectChanged(e) {
+  const sel = e.target;
+  const index = parseInt(sel.dataset.index, 10);
+  const newName = sel.value;
+
+  // すでに選択されている名前であればエラー
+  if (newName && isNameAlreadySelected(newName, index)) {
+    alert("すでに他のマスで選択されています。");
+    // 選択を取り消し
+    sel.value = "";
+  }
+
+  // 選択状況を保存
+  storeSelectsInLocalStorage();
+  // UIを更新（他のマスのoptionをdisableに）
+  updateSelectsDisableState();
+}
+
+/** ▼ 指定の名前が他マスで選択されているかどうか */
+function isNameAlreadySelected(name, selfIndex) {
+  const selects = board.querySelectorAll("select");
+  for (let i = 0; i < CELL_COUNT; i++) {
+    if (i === selfIndex) continue;
+    if (selects[i].value === name) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** ▼ 全セレクトの現在値を localStorage に保存 */
+function storeSelectsInLocalStorage() {
+  const selects = board.querySelectorAll("select");
+  const selectedNames = [];
+  for (let i = 0; i < selects.length; i++) {
+    selectedNames.push(selects[i].value);
+  }
+  localStorage.setItem(STORAGE_KEY_NAMES, JSON.stringify(selectedNames));
+}
+
+/** ▼ セレクトボックスの重複している選択肢を disable にする */
+function updateSelectsDisableState() {
+  const selects = board.querySelectorAll("select");
+  const usedNames = [];
+
+  // まず全選択値を収集
+  for (let i = 0; i < CELL_COUNT; i++) {
+    const val = selects[i].value;
+    if (val) {
+      usedNames.push(val);
+    }
+  }
+
+  // 各セレクトのoptionを更新
+  for (let i = 0; i < CELL_COUNT; i++) {
+    const curVal = selects[i].value;
+    const options = selects[i].querySelectorAll("option");
+
+    for (const opt of options) {
+      if (opt.value === "" || opt.value === curVal) {
+        // 空 or 現在選択している値はdisableにしない
+        opt.disabled = false;
+      } else {
+        // 他セレクトで使われていればdisable
+        if (usedNames.includes(opt.value)) {
+          opt.disabled = true;
+        } else {
+          opt.disabled = false;
+        }
+      }
+    }
+  }
+}
+
+/** ▼ 「決定」ボタン押下 */
+decisionBtn.addEventListener("click", () => {
+  errorMsg.textContent = "";
+
+  // すでにロックされていれば何もしない
+  const locked = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED)) || false;
+  if (locked) return;
+
+  const selects = board.querySelectorAll("select");
+  const selectedNames = [];
+
+  // 全部選択されているかチェック
+  for (let i = 0; i < selects.length; i++) {
+    if (!selects[i].value) {
+      errorMsg.textContent = "Error: 9マスすべて人名を選択してください。";
+      return;
+    }
+    selectedNames.push(selects[i].value);
+  }
+
+  // ローカルストレージに保存
+  localStorage.setItem(STORAGE_KEY_NAMES, JSON.stringify(selectedNames));
+  localStorage.setItem(STORAGE_KEY_LOCKED, JSON.stringify(true));
+
+  // 選択後は編集できないようにする
+  disableAllSelects();
+});
+
+/** ▼ 全セレクトを変更不可に */
+function disableAllSelects() {
+  const selects = board.querySelectorAll("select");
+  selects.forEach(sel => {
+    sel.disabled = true;
+  });
+}
+
+/** ▼ マスがタップされたとき */
+function onCellTapped(index) {
+  // ロックされていなければ丸は付けられない
+  const locked = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED)) || false;
+  if (!locked) return;
+
+  let marks = JSON.parse(localStorage.getItem(STORAGE_KEY_MARKS)) || Array(CELL_COUNT).fill(false);
+
+  // すでに○が付いている場合は取り消すか確認
+  if (marks[index]) {
+    if (confirm("この○を取り消しますか？")) {
+      marks[index] = false;
+      removeMaruImage(index);
+    }
+  } else {
+    // 付いていないなら○を付ける
+    marks[index] = true;
+    addMaruImage(index);
+  }
+
+  localStorage.setItem(STORAGE_KEY_MARKS, JSON.stringify(marks));
+  checkReachAndBingo();
+}
+
+/** ▼ 指定マスに○画像を重ねる */
+function addMaruImage(index) {
+  const cell = board.querySelectorAll(".cell")[index];
+  // 重複追加防止のため一旦削除
+  removeMaruImage(index);
+
+  const img = document.createElement("img");
+  img.src = "maru.png";
+  img.className = "mark";
+  cell.appendChild(img);
+}
+
+/** ▼ 指定マスの○画像を削除 */
+function removeMaruImage(index) {
+  const cell = board.querySelectorAll(".cell")[index];
+  const mark = cell.querySelector(".mark");
+  if (mark) cell.removeChild(mark);
+}
+
+/** ▼ リーチ/BINGO判定 */
+function checkReachAndBingo() {
+  const marks = JSON.parse(localStorage.getItem(STORAGE_KEY_MARKS)) || Array(CELL_COUNT).fill(false);
+
+  // ビンゴ判定用のライン
+  const lines = [
+    [0,1,2],[3,4,5],[6,7,8], // 横
+    [0,3,6],[1,4,7],[2,5,8], // 縦
+    [0,4,8],[2,4,6],         // 斜め
+  ];
+
+  let isBingo = false;
+  let isReach = false;
+
+  for (const line of lines) {
+    const [a, b, c] = line;
+    const count = [marks[a], marks[b], marks[c]].filter(Boolean).length;
+    if (count === 3) {
+      isBingo = true;
+    } else if (count === 2) {
+      // 残り1マスが未チェックならリーチ
+      const notCheckedIndex = [a,b,c].find(idx => !marks[idx]);
+      if (notCheckedIndex !== undefined) {
+        isReach = true;
+      }
+    }
+  }
+
+  if (isBingo) {
+    showBingoOverlay();
+    reachText.textContent = "";
+  } else if (isReach) {
+    reachText.textContent = "リーチ中！";
+  } else {
+    reachText.textContent = "";
+  }
+}
+
+/** ▼ BINGO画像を表示して3秒後に非表示 */
+function showBingoOverlay() {
+  bingoOverlay.style.display = "block";
+  setTimeout(hideBingoOverlay, 3000);
+}
+
+/** ▼ BINGO画像を非表示 */
+function hideBingoOverlay() {
+  bingoOverlay.style.display = "none";
+}
+
+/** ▼ UI更新が必要な場合の呼び出し */
+function updateUI() {
+  // リーチ/BINGO判定を一度実行
+  checkReachAndBingo();
+}
+</script>
+</body>
+</html>
