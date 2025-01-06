@@ -1,63 +1,99 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <!-- スマホ向けレスポンシブ指定 -->
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
   <title>3x3ビンゴ</title>
   <style>
-    body {
+    html, body {
+      margin: 0; padding: 0;
       font-family: sans-serif;
-      margin: 20px;
+      /* スマホ全体を使う */
+      width: 100%; height: 100%;
+      background-color: #f4f4f4;
     }
     #app {
-      max-width: 400px;
-      margin: 0 auto;
-      text-align: center;
+      /* 画面いっぱい＆縦スクロール対策 */
+      width: 100%; 
+      min-height: 100vh;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px;
     }
     h1 {
-      margin-bottom: 10px;
+      margin: 10px 0;
+      font-size: 1.5em;
     }
+    #errorMsg {
+      color: red;
+      font-weight: bold;
+      margin: 10px 0;
+      min-height: 1.2em; /* エラー表示でレイアウトが崩れないように確保 */
+    }
+    /* ボード：スマホ画面いっぱい使うイメージ */
     .board {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       grid-gap: 10px;
-      margin: 10px 0;
+      width: 100%;
+      max-width: 400px; /* 大きすぎないように一応上限 */
+      margin-bottom: 15px;
     }
     .cell {
       position: relative;
-      width: 100px;
-      height: 80px;
+      background: #fff;
       border: 1px solid #ccc;
+      border-radius: 5px;
+      overflow: hidden;
+      /* 縦横比をある程度意識 (お好みで変更) */
+      padding-top: 75%; /* 横幅に対し縦75%の比率を確保 -> 正方形に近い比率 */
+    }
+    /* 内部のコンテンツを絶対配置で中央に */
+    .cellContent {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto;
+      flex-direction: column;
+      padding: 5px;
     }
-    /* セレクトボックスをできるだけ幅いっぱいに */
+    /* セレクトボックス */
     .cell select {
       width: 90%;
+      font-size: 1em;
     }
-    /* maru.pngを重ねる用 */
+    /* ○マーク(maru.png) */
     .mark {
       position: absolute;
-      width: 60px;
-      height: 60px;
-      top: 10px;
-      left: 20px;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60%; /* お好みで調整 */
+      height: auto;
       pointer-events: none;
     }
+    /* 決定ボタン */
     #decisionBtn {
-      margin-top: 20px;
       padding: 10px 20px;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 5px;
+      background-color: #4285f4;
+      color: #fff;
+      cursor: pointer;
     }
-    #errorMsg {
-      color: red;
-      margin: 10px 0;
-      font-weight: bold;
+    #decisionBtn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
     }
     #reachText {
       color: blue;
       font-size: 1.2em;
-      margin-top: 10px;
+      margin: 10px 0;
+      min-height: 1.2em; /* リーチ表示でレイアウトが崩れないように確保 */
     }
     /* BINGO画像をフルスクリーン表示 */
     #bingoOverlay {
@@ -78,25 +114,20 @@
 </head>
 <body>
 <div id="app">
-  <h1>3x3ビンゴ</h1>
+  <h1>3×3 ビンゴ</h1>
   <div id="errorMsg"></div>
-  <div class="board" id="board">
-    <!-- 9マス(3x3) -->
-  </div>
+  <div class="board" id="board"></div>
   <button id="decisionBtn">決定</button>
   <div id="reachText"></div>
 </div>
 
 <!-- BINGOオーバーレイ表示領域 -->
 <div id="bingoOverlay">
-  <img src="bingo.png" alt="BINGO" />
+  <img src="bingo.png" alt="BINGO">
 </div>
 
 <script>
-/**
- * ▼ あいうえお順に並んだ名前リスト(仮に手動で並べた例)
- *   - 環境によっては localeCompare('ja') でソートしてもOK
- */
+/** ▼ あいうえお順の名前リスト */
 const nameList = [
   "けいじろう",
   "こうすけ",
@@ -112,245 +143,68 @@ const nameList = [
   "るい",
 ];
 
-/**
- * ▼ ローカルストレージで保持するキー
- */
+/** ▼ ローカルストレージで保持するキー */
 const STORAGE_KEY_NAMES = "bingoNames";
 const STORAGE_KEY_LOCKED = "bingoLocked";
-const STORAGE_KEY_MARKS = "bingoMarks"; // どのマスが○(maru.png)になっているか
+const STORAGE_KEY_MARKS = "bingoMarks";
 
-// 3x3のマス数
+/** ▼ 3x3 のマス数 */
 const CELL_COUNT = 9;
 
-// DOM取得
+/** ▼ DOM取得 */
 const board = document.getElementById("board");
 const decisionBtn = document.getElementById("decisionBtn");
 const errorMsg = document.getElementById("errorMsg");
 const reachText = document.getElementById("reachText");
 const bingoOverlay = document.getElementById("bingoOverlay");
 
-/**
- * ▼ ページ読み込み時の処理
- */
+/** ▼ ページロード時の処理 */
 window.addEventListener("DOMContentLoaded", () => {
   initBoard();
   loadState();
   updateUI();
 });
 
-/**
- * ▼ ボード(9マス)生成
- */
+/** ▼ ボード初期化 */
 function initBoard() {
   for (let i = 0; i < CELL_COUNT; i++) {
     const cell = document.createElement("div");
     cell.className = "cell";
 
-    // セレクトボックス生成
+    // 中身を配置するためのラッパ
+    const cellContent = document.createElement("div");
+    cellContent.className = "cellContent";
+
+    // セレクトボックス
     const select = document.createElement("select");
     select.innerHTML = makeOptions(nameList);
-    select.dataset.index = i; // 何番目のマスか
-    cell.appendChild(select);
+    select.dataset.index = i;
+    // セレクト変更時に重複チェック & ストレージ保存
+    select.addEventListener("change", onSelectChanged);
+    select.addEventListener("input", onSelectChanged);
 
-    // セルをタップした時の処理(○を付ける or 削除)
-    cell.addEventListener("click", () => onCellClicked(i));
+    cellContent.appendChild(select);
+    cell.appendChild(cellContent);
+
+    // ロックされてからのマス(○つけ)はタップで反応させる
+    // モバイル向けに touchend, PC 向けに click を登録
+    cell.addEventListener("touchend", () => onCellTapped(i), {passive: true});
+    cell.addEventListener("click", () => onCellTapped(i));
 
     board.appendChild(cell);
   }
 }
 
-/**
- * ▼ nameListから<option>を生成する
- */
+/** ▼ nameList から <option> 生成 */
 function makeOptions(names) {
   let options = '<option value="">(選択してください)</option>';
-  for (let i = 0; i < names.length; i++) {
-    options += `<option value="${names[i]}">${names[i]}</option>`;
+  for (const n of names) {
+    options += `<option value="${n}">${n}</option>`;
   }
   return options;
 }
 
-/**
- * ▼ ローカルストレージに保存された状態を読み込んで反映
- */
+/** ▼ ローカルストレージから読み込んで画面に反映 */
 function loadState() {
-  // 選択されている名前の配列(9要素)かチェック
   const storedNames = JSON.parse(localStorage.getItem(STORAGE_KEY_NAMES));
-  if (storedNames && Array.isArray(storedNames) && storedNames.length === CELL_COUNT) {
-    for (let i = 0; i < CELL_COUNT; i++) {
-      const select = board.querySelectorAll("select")[i];
-      select.value = storedNames[i];
-    }
-  }
-
-  // 決定ボタンが押されたかどうか
-  const locked = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED));
-  if (locked === true) {
-    // セレクトを変更不可に
-    disableAllSelects();
-  }
-
-  // ○(maru)の付いている位置を読み込み
-  const marks = JSON.parse(localStorage.getItem(STORAGE_KEY_MARKS));
-  if (marks && Array.isArray(marks) && marks.length === CELL_COUNT) {
-    for (let i = 0; i < CELL_COUNT; i++) {
-      if (marks[i]) {
-        addMaruImage(i);
-      }
-    }
-  }
-}
-
-/**
- * ▼ ボタンクリックイベント
- */
-decisionBtn.addEventListener("click", () => {
-  errorMsg.textContent = "";
-  // すでにロックされていれば何もしない
-  const locked = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED)) || false;
-  if (locked) return;
-
-  // 全部選択されているかチェック
-  const selects = board.querySelectorAll("select");
-  const selectedNames = [];
-  for (let i = 0; i < selects.length; i++) {
-    if (!selects[i].value) {
-      errorMsg.textContent = "Error: 9マスすべて人名を選択してください。";
-      return;
-    }
-    selectedNames.push(selects[i].value);
-  }
-
-  // ローカルストレージに保存
-  localStorage.setItem(STORAGE_KEY_NAMES, JSON.stringify(selectedNames));
-  localStorage.setItem(STORAGE_KEY_LOCKED, JSON.stringify(true));
-
-  // 選択後は編集できないようにする
-  disableAllSelects();
-});
-
-/**
- * ▼ セルをクリックしたときの処理
- */
-function onCellClicked(index) {
-  // 「決定」されていないときは○を付けられない
-  const locked = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED)) || false;
-  if (!locked) return;
-
-  // marks情報を取得
-  let marks = JSON.parse(localStorage.getItem(STORAGE_KEY_MARKS)) || Array(CELL_COUNT).fill(false);
-
-  // すでに○が付いているなら削除するか確認
-  if (marks[index]) {
-    if (confirm("この○を取り消しますか？")) {
-      marks[index] = false;
-      removeMaruImage(index);
-    }
-  } else {
-    // 付いていないなら○を付ける
-    marks[index] = true;
-    addMaruImage(index);
-  }
-
-  localStorage.setItem(STORAGE_KEY_MARKS, JSON.stringify(marks));
-  checkReachAndBingo();
-}
-
-/**
- * ▼ index番目のセルに○画像を重ねる
- */
-function addMaruImage(index) {
-  const cell = board.querySelectorAll(".cell")[index];
-  // すでに付いていたら一旦削除(多重追加防止)
-  removeMaruImage(index);
-
-  const img = document.createElement("img");
-  img.src = "maru.png";
-  img.className = "mark";
-  img.alt = "○";
-  img.dataset.index = index;
-  cell.appendChild(img);
-}
-
-/**
- * ▼ index番目のセルの○画像を削除
- */
-function removeMaruImage(index) {
-  const cell = board.querySelectorAll(".cell")[index];
-  const mark = cell.querySelector(".mark");
-  if (mark) {
-    cell.removeChild(mark);
-  }
-}
-
-/**
- * ▼ 全セレクトボックスを無効に
- */
-function disableAllSelects() {
-  const selects = board.querySelectorAll("select");
-  selects.forEach((sel) => {
-    sel.disabled = true;
-  });
-}
-
-/**
- * ▼ リーチ・ビンゴの状態をチェックし、UIを更新
- */
-function checkReachAndBingo() {
-  const marks = JSON.parse(localStorage.getItem(STORAGE_KEY_MARKS)) || Array(CELL_COUNT).fill(false);
-
-  // ビンゴ判定用に、3つのインデックス配列をまとめる
-  const lines = [
-    // 横3行
-    [0,1,2], [3,4,5], [6,7,8],
-    // 縦3列
-    [0,3,6], [1,4,7], [2,5,8],
-    // 斜め2本
-    [0,4,8], [2,4,6]
-  ];
-
-  let isBingo = false;
-  let isReach = false;
-
-  lines.forEach(line => {
-    const [a,b,c] = line;
-    const count = [marks[a], marks[b], marks[c]].filter(Boolean).length;
-    if (count === 3) {
-      isBingo = true;
-    } else if (count === 2) {
-      // 2マス○が付いていて、残り1マスが未チェックならリーチ
-      const notCheckedIndex = [a,b,c].find(idx => !marks[idx]);
-      if (notCheckedIndex !== undefined) {
-        isReach = true;
-      }
-    }
-  });
-
-  // リーチ中の表示
-  if (isBingo) {
-    showBingoOverlay();
-    reachText.textContent = "";
-  } else if (isReach) {
-    reachText.textContent = "リーチ中！";
-  } else {
-    reachText.textContent = "";
-  }
-}
-
-/**
- * ▼ BINGO画像を画面いっぱいに表示
- */
-function showBingoOverlay() {
-  bingoOverlay.style.display = "block";
-}
-
-/**
- * ▼ UI更新（必要があれば）
- */
-function updateUI() {
-  // いまの状態でリーチ/BINGO判定
-  checkReachAndBingo();
-}
-</script>
-</body>
-</html>
+  if (storedNames && Array.isArray(storedNames) && storedNames.length === CEL
