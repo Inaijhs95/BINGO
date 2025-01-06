@@ -46,7 +46,7 @@
       border: 1px solid #ccc;
       border-radius: 5px;
       overflow: hidden;
-      padding-top: 70%; /* 大きさ調整 */
+      padding-top: 70%; /* 4x4なので少し小さめに */
     }
     .cellContent {
       position: absolute;
@@ -57,30 +57,10 @@
       flex-direction: column;
       padding: 5px;
     }
-    /* セレクトボックス */
+
     .cell select {
       width: 90%;
       font-size: 1em;
-    }
-
-    /* ↓ 決定後に表示する名前用（流れるアニメーション） */
-    .finalName {
-      width: 90%;
-      text-align: center;
-      overflow: hidden;
-      white-space: nowrap;
-      position: relative;
-      /* 背景塗りつぶしなど必要なら追加 */
-    }
-    .finalName span {
-      display: inline-block;
-      padding-left: 100%; /* アニメ開始位置を右にずらす */
-      animation: marquee 7s linear infinite; 
-      /* ↑ 速度を変えたい場合は 7s を変更してください */
-    }
-    @keyframes marquee {
-      0%   { transform: translateX(0); }
-      100% { transform: translateX(-100%); }
     }
 
     /* ○マーク(maru.png) */
@@ -92,6 +72,7 @@
       height: auto;
       pointer-events: none;
     }
+
     /* ボタン類 */
     .btnArea {
       display: flex;
@@ -125,6 +106,7 @@
       margin: 10px 0;
       min-height: 1.2em;
     }
+
     /* 準備完了テキスト */
     #readyText {
       display: none;
@@ -135,6 +117,7 @@
       width: 100%;
       margin: 10px 0;
     }
+
     /* BINGO画像をフルスクリーン表示 */
     #bingoOverlay {
       display: none;
@@ -149,6 +132,32 @@
       max-width: 90%;
       max-height: 90%;
       margin-top: 5%;
+    }
+
+    /* ▼ 5文字以上の名前はmarquee風スクロールに */
+    .finalName {
+      width: 90%;
+      text-align: center;
+      overflow: hidden;
+      white-space: nowrap;
+      position: relative;
+    }
+    .finalName span {
+      display: inline-block;
+      padding-left: 100%;
+      animation: marquee 7s linear infinite;
+    }
+    @keyframes marquee {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+
+    /* ▼ 4文字以下なら固定表示 */
+    .finalNameStatic {
+      width: 90%;
+      text-align: center;
+      overflow: hidden;
+      white-space: nowrap;
     }
   </style>
 </head>
@@ -250,17 +259,14 @@ function initBoard() {
   }
 
   // 「準備完了」をどこかのマスをタップしたら消す → board全体にイベント
-  // ただし指でスクロールしようとしても消えないように最初だけ
   board.addEventListener("click", hideReadyTextOnce);
   board.addEventListener("touchend", hideReadyTextOnce, {passive: true});
 }
 
 /** ▼ 「準備完了」の表示を隠す(一度でもマスをタップしたら) */
 function hideReadyTextOnce() {
-  // 準備完了が表示されている場合だけ消す
   if (readyText.style.display === "block") {
     readyText.style.display = "none";
-    // 一度消したら、このイベントは不要なので除去
     board.removeEventListener("click", hideReadyTextOnce);
     board.removeEventListener("touchend", hideReadyTextOnce);
   }
@@ -268,7 +274,6 @@ function hideReadyTextOnce() {
 
 /** ▼ セレクトボックスのオプション生成 */
 function makeOptions(names) {
-  // 空(未選択)用のoption
   let options = '<option value="">(選択してください)</option>';
   for (const n of names) {
     options += `<option value="${n}">${n}</option>`;
@@ -458,7 +463,11 @@ function showReadyText() {
   readyText.style.display = "block";
 }
 
-/** ▼ セル内のセレクトを消して、最終決定の名前をテキスト表示 */
+/**
+ * ▼ セル内のセレクトを消して、決定した名前をテキスト表示
+ *    - 5文字以上 → marquee (finalName)
+ *    - 4文字以下 → 固定表示 (finalNameStatic)
+ */
 function renderFinalTextInCells() {
   const selects = board.querySelectorAll("select");
   for (let i = 0; i < CELL_COUNT; i++) {
@@ -471,16 +480,23 @@ function renderFinalTextInCells() {
     // セレクト要素を消す
     cellContent.removeChild(sel);
 
-    // finalName 用の要素を追加
-    // マルチラインではなくスクロール（marquee）表示
     const nameDiv = document.createElement("div");
-    nameDiv.className = "finalName";
-    nameDiv.innerHTML = `<span>${finalName}</span>`; 
+
+    if (finalName.length >= 5) {
+      // 5文字以上 → marquee
+      nameDiv.className = "finalName";
+      nameDiv.innerHTML = `<span>${finalName}</span>`;
+    } else {
+      // 4文字以下 → 固定表示
+      nameDiv.className = "finalNameStatic";
+      nameDiv.textContent = finalName;
+    }
+
     cellContent.appendChild(nameDiv);
   }
 }
 
-/** ▼ マスがタップされたとき */
+/** ▼ マスがタップされたとき（○の付け外し） */
 function onCellTapped(index) {
   // ロックされていなければ丸を付けられない
   const locked = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED)) || false;
@@ -495,7 +511,6 @@ function onCellTapped(index) {
       removeMaruImage(index);
     }
   } else {
-    // 付いていないなら○を付ける
     marks[index] = true;
     addMaruImage(index);
   }
