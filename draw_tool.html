@@ -14,17 +14,30 @@
     h1 {
       color: #333;
     }
-    #drawButton {
+    .btnArea {
+      margin: 20px 0;
+    }
+    #drawButton, #resetButton {
       padding: 10px 20px;
       font-size: 1.2em;
-      margin: 20px 0;
+      margin: 0 10px;
       cursor: pointer;
-      background-color: #28a745;
-      color: white;
       border: none;
       border-radius: 5px;
     }
+    #drawButton {
+      background-color: #28a745;
+      color: white;
+    }
+    #resetButton {
+      background-color: #dc3545;
+      color: white;
+    }
     #drawButton:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    #resetButton:disabled {
       background-color: #ccc;
       cursor: not-allowed;
     }
@@ -42,6 +55,14 @@
       border-radius: 5px;
       border: 1px solid #ddd;
       font-size: 1.1em;
+      display: flex;
+      align-items: center;
+    }
+    #drawnNames li span.number {
+      display: inline-block;
+      width: 30px;
+      font-weight: bold;
+      color: #007bff;
     }
     #message {
       margin-top: 20px;
@@ -54,7 +75,10 @@
 
   <h1>名前抽選ツール</h1>
 
-  <button id="drawButton">抽選する</button>
+  <div class="btnArea">
+    <button id="drawButton">抽選する</button>
+    <button id="resetButton">リセット</button>
+  </div>
 
   <ul id="drawnNames">
     <!-- 抽選された名前がここに表示されます -->
@@ -83,13 +107,24 @@
       "しょうた",
     ];
 
+    // ▼ ローカルストレージキー
+    const STORAGE_KEY_DRAWN = "drawnNames";
+
     // ▼ 抽選済み名前リスト
     let drawnNames = [];
 
     // ▼ DOM要素取得
     const drawButton = document.getElementById('drawButton');
+    const resetButton = document.getElementById('resetButton');
     const drawnNamesList = document.getElementById('drawnNames');
     const messageDiv = document.getElementById('message');
+
+    // ▼ ページロード時の処理
+    window.addEventListener('DOMContentLoaded', () => {
+      loadDrawnNames();
+      renderDrawnNames();
+      updateButtons();
+    });
 
     // ▼ 抽選ボタンのクリックイベント
     drawButton.addEventListener('click', () => {
@@ -112,15 +147,112 @@
 
       // 抽選結果を画面に表示
       const listItem = document.createElement('li');
-      listItem.textContent = selectedName;
+
+      // 抽選順に番号を付ける
+      const numberSpan = document.createElement('span');
+      numberSpan.className = 'number';
+      numberSpan.textContent = drawnNames.length + '.';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = selectedName;
+
+      listItem.appendChild(numberSpan);
+      listItem.appendChild(nameSpan);
       drawnNamesList.appendChild(listItem);
+
+      // 抽選結果をローカルストレージに保存
+      saveDrawnNames();
 
       // 全員抽選されたかチェック
       if (drawnNames.length >= nameList.length) {
         drawButton.disabled = true;
         messageDiv.textContent = "すべての名前が抽選されました。";
       }
+
+      updateButtons();
     });
+
+    // ▼ リセットボタンのクリックイベント
+    resetButton.addEventListener('click', () => {
+      if (!confirm("抽選結果をリセットしてもよろしいですか？")) {
+        return;
+      }
+
+      // 抽選済みリストをクリア
+      drawnNames = [];
+
+      // ローカルストレージをクリア
+      localStorage.removeItem(STORAGE_KEY_DRAWN);
+
+      // 抽選結果リストをクリア
+      drawnNamesList.innerHTML = '';
+
+      // メッセージをクリア
+      messageDiv.textContent = '';
+
+      // ボタンの状態を更新
+      drawButton.disabled = false;
+      updateButtons();
+    });
+
+    // ▼ 抽選済み名前をローカルストレージから読み込む
+    function loadDrawnNames() {
+      const storedNames = JSON.parse(localStorage.getItem(STORAGE_KEY_DRAWN));
+      if (storedNames && Array.isArray(storedNames)) {
+        drawnNames = storedNames;
+      }
+    }
+
+    // ▼ 抽選済み名前を画面に表示する
+    function renderDrawnNames() {
+      drawnNamesList.innerHTML = '';
+      drawnNames.forEach((name, index) => {
+        const listItem = document.createElement('li');
+
+        // 抽選順に番号を付ける
+        const numberSpan = document.createElement('span');
+        numberSpan.className = 'number';
+        numberSpan.textContent = (index + 1) + '.';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = name;
+
+        listItem.appendChild(numberSpan);
+        listItem.appendChild(nameSpan);
+        drawnNamesList.appendChild(listItem);
+      });
+
+      // 全員抽選済みかチェック
+      if (drawnNames.length >= nameList.length) {
+        drawButton.disabled = true;
+        messageDiv.textContent = "すべての名前が抽選されました。";
+      } else {
+        messageDiv.textContent = '';
+      }
+    }
+
+    // ▼ 抽選済み名前をローカルストレージに保存する
+    function saveDrawnNames() {
+      localStorage.setItem(STORAGE_KEY_DRAWN, JSON.stringify(drawnNames));
+    }
+
+    // ▼ ボタンの状態を更新する
+    function updateButtons() {
+      // リセットボタンは抽選済みが1つ以上のとき有効
+      if (drawnNames.length > 0) {
+        resetButton.disabled = false;
+      } else {
+        resetButton.disabled = true;
+      }
+
+      // 抽選するボタンは全員抽選済みでなければ有効
+      if (drawnNames.length < nameList.length) {
+        drawButton.disabled = false;
+      } else {
+        drawButton.disabled = true;
+      }
+    }
+
   </script>
 
 </body>
