@@ -46,8 +46,7 @@
       border: 1px solid #ccc;
       border-radius: 5px;
       overflow: hidden;
-      /* 4x4だとあまり正方形にすると大きい場合があるので微調整 */
-      padding-top: 70%;
+      padding-top: 70%; /* 大きさ調整 */
     }
     .cellContent {
       position: absolute;
@@ -58,10 +57,32 @@
       flex-direction: column;
       padding: 5px;
     }
+    /* セレクトボックス */
     .cell select {
       width: 90%;
       font-size: 1em;
     }
+
+    /* ↓ 決定後に表示する名前用（流れるアニメーション） */
+    .finalName {
+      width: 90%;
+      text-align: center;
+      overflow: hidden;
+      white-space: nowrap;
+      position: relative;
+      /* 背景塗りつぶしなど必要なら追加 */
+    }
+    .finalName span {
+      display: inline-block;
+      padding-left: 100%; /* アニメ開始位置を右にずらす */
+      animation: marquee 7s linear infinite; 
+      /* ↑ 速度を変えたい場合は 7s を変更してください */
+    }
+    @keyframes marquee {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+
     /* ○マーク(maru.png) */
     .mark {
       position: absolute;
@@ -227,6 +248,22 @@ function initBoard() {
 
     board.appendChild(cell);
   }
+
+  // 「準備完了」をどこかのマスをタップしたら消す → board全体にイベント
+  // ただし指でスクロールしようとしても消えないように最初だけ
+  board.addEventListener("click", hideReadyTextOnce);
+  board.addEventListener("touchend", hideReadyTextOnce, {passive: true});
+}
+
+/** ▼ 「準備完了」の表示を隠す(一度でもマスをタップしたら) */
+function hideReadyTextOnce() {
+  // 準備完了が表示されている場合だけ消す
+  if (readyText.style.display === "block") {
+    readyText.style.display = "none";
+    // 一度消したら、このイベントは不要なので除去
+    board.removeEventListener("click", hideReadyTextOnce);
+    board.removeEventListener("touchend", hideReadyTextOnce);
+  }
 }
 
 /** ▼ セレクトボックスのオプション生成 */
@@ -253,6 +290,9 @@ function loadState() {
   if (locked === true) {
     disableAllSelects();
     showReadyText(); // 既に決定済みなら"準備完了"も表示
+
+    // セレクトをテキスト表示に切り替え
+    renderFinalTextInCells();
   }
 
   const marks = JSON.parse(localStorage.getItem(STORAGE_KEY_MARKS));
@@ -398,6 +438,9 @@ decisionBtn.addEventListener("click", () => {
   // 選択後は編集できないようにする
   disableAllSelects();
 
+  // セレクトをテキスト表示に切り替え
+  renderFinalTextInCells();
+
   // 準備完了を表示
   showReadyText();
 });
@@ -413,6 +456,28 @@ function disableAllSelects() {
 /** ▼ 「準備完了」を表示 */
 function showReadyText() {
   readyText.style.display = "block";
+}
+
+/** ▼ セル内のセレクトを消して、最終決定の名前をテキスト表示 */
+function renderFinalTextInCells() {
+  const selects = board.querySelectorAll("select");
+  for (let i = 0; i < CELL_COUNT; i++) {
+    const sel = selects[i];
+    const finalName = sel.value || "";
+
+    // 親要素.cellContent
+    const cellContent = sel.parentElement;
+
+    // セレクト要素を消す
+    cellContent.removeChild(sel);
+
+    // finalName 用の要素を追加
+    // マルチラインではなくスクロール（marquee）表示
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "finalName";
+    nameDiv.innerHTML = `<span>${finalName}</span>`; 
+    cellContent.appendChild(nameDiv);
+  }
 }
 
 /** ▼ マスがタップされたとき */
