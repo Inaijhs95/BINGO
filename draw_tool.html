@@ -418,6 +418,11 @@
         // 表示を保持
         latestNameDiv.style.display = 'flex';
 
+        // タイマーが動作していない場合は開始
+        if (!timerInterval) {
+          startTimer();
+        }
+
         // ボタンの状態を再度更新
         if (drawnNames.length < nameList.length) {
           drawButton.disabled = false;
