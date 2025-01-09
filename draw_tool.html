@@ -78,6 +78,24 @@
       font-size: 1.2em;
       color: #d9534f;
     }
+    /* タイマーのスタイル */
+    #timer {
+      margin: 20px 0;
+      font-size: 1.5em;
+      padding: 10px;
+      border-radius: 5px;
+      background-color: #e2e3e5; /* 初期背景色 */
+      display: inline-block;
+      transition: background-color 0.5s, color 0.5s;
+    }
+    /* 10分を超えた場合 */
+    #timer.warning {
+      background-color: #fff3cd; /* 黄色系 */
+    }
+    /* 15分を超えた場合 */
+    #timer.danger {
+      color: #dc3545; /* 赤色 */
+    }
   </style>
 </head>
 <body>
@@ -92,6 +110,9 @@
   <ul id="drawnNames">
     <!-- 抽選された名前がここに表示されます -->
   </ul>
+
+  <!-- タイマー表示エリアを追加 -->
+  <div id="timer" style="display: none;">00:00</div>
 
   <div id="message"></div>
 
@@ -115,27 +136,35 @@
       "ひろふみ", 
       "しょうた",
     ];
-// 日本語のロケールを指定してソート
-nameList.sort((a, b) => a.localeCompare(b, 'ja'));
-
-console.log(nameList);
+    // 日本語のロケールを指定してソート
+    nameList.sort((a, b) => a.localeCompare(b, 'ja'));
+    
+    console.log(nameList);
     // ▼ ローカルストレージキー
     const STORAGE_KEY_DRAWN = "drawnNames";
 
     // ▼ 抽選済み名前リスト
     let drawnNames = [];
 
+    // ▼ タイマー関連
+    let timerInterval = null;
+    let elapsedSeconds = 0;
+
     // ▼ DOM要素取得
     const drawButton = document.getElementById('drawButton');
     const resetButton = document.getElementById('resetButton');
     const drawnNamesList = document.getElementById('drawnNames');
     const messageDiv = document.getElementById('message');
+    const timerDiv = document.getElementById('timer');
 
     // ▼ ページロード時の処理
     window.addEventListener('DOMContentLoaded', () => {
       loadDrawnNames();
       renderDrawnNames();
       updateButtons();
+      if (drawnNames.length > 0) {
+        startTimer();
+      }
     });
 
     // ▼ 抽選ボタンのクリックイベント
@@ -183,6 +212,11 @@ console.log(nameList);
       // 抽選済み名前をローカルストレージに保存
       saveDrawnNames();
 
+      // タイマーを開始（最初の抽選時のみ）
+      if (drawnNames.length === 1) {
+        startTimer();
+      }
+
       // 全員抽選されたかチェック
       if (drawnNames.length >= nameList.length) {
         drawButton.disabled = true;
@@ -212,6 +246,9 @@ console.log(nameList);
 
       // メッセージをクリア
       messageDiv.textContent = '';
+
+      // タイマーをリセット
+      resetTimer();
 
       // ボタンの状態を更新
       drawButton.disabled = false;
@@ -252,6 +289,13 @@ console.log(nameList);
       } else {
         messageDiv.textContent = '';
       }
+
+      // タイマー表示
+      if (drawnNames.length > 0) {
+        timerDiv.style.display = 'inline-block';
+      } else {
+        timerDiv.style.display = 'none';
+      }
     }
 
     // ▼ 抽選済み名前をローカルストレージに保存する
@@ -283,6 +327,48 @@ console.log(nameList);
         const numberSpan = item.querySelector('span.number');
         numberSpan.textContent = (index + 1) + '.';
       });
+    }
+
+    // ▼ タイマーを開始する
+    function startTimer() {
+      timerDiv.style.display = 'inline-block';
+      updateTimerDisplay(); // 初回表示
+
+      timerInterval = setInterval(() => {
+        elapsedSeconds++;
+        updateTimerDisplay();
+      }, 1000);
+    }
+
+    // ▼ タイマーをリセットする
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      elapsedSeconds = 0;
+      timerDiv.textContent = '00:00';
+      timerDiv.classList.remove('warning', 'danger');
+      timerDiv.style.display = 'none';
+    }
+
+    // ▼ タイマー表示を更新する
+    function updateTimerDisplay() {
+      const minutes = Math.floor(elapsedSeconds / 60);
+      const seconds = elapsedSeconds % 60;
+      const formattedTime = 
+        String(minutes).padStart(2, '0') + ':' + 
+        String(seconds).padStart(2, '0');
+      timerDiv.textContent = formattedTime;
+
+      // スタイルの更新
+      if (elapsedSeconds > 15 * 60) { // 15分超
+        timerDiv.classList.add('danger');
+        timerDiv.classList.remove('warning');
+      } else if (elapsedSeconds > 10 * 60) { // 10分超
+        timerDiv.classList.add('warning');
+        timerDiv.classList.remove('danger');
+      } else {
+        timerDiv.classList.remove('warning', 'danger');
+      }
     }
 
   </script>
