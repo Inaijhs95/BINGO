@@ -212,9 +212,9 @@
     <p>
       20:00までに<br>
       参加者の名前を選び、9マスを埋めましょう。<br>
-「おまかせ」を押すと、空きマスに名前を自動入力します。<br>
-      「決定」を押すと、準備完了です。<br>
-      「決定」後は選択内容を変更できません。
+「おまかせ」▶空きマスに名前を自動入力<br>
+      「決定」▶準備完了
+      
     </p>
   </div>
 </div>
@@ -459,10 +459,11 @@ decisionBtn.addEventListener("click", () => {
   const locked = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED)) || false;
   if (locked) return;
 
-  // 確定確認
-  if (!confirm("確定してよろしいですか？")) {
-    return;
-  }
+ // 確定確認
+if (!confirm("決定してよろしいですか？\n決定後は選択内容を変更できません。")) {
+  return;
+}
+
 
   const selects = board.querySelectorAll("select");
   const selectedNames = [];
