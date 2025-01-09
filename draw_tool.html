@@ -378,25 +378,32 @@
       }
     }
 
+    // ▼ 配列をシャッフルするヘルパー関数（Fisher-Yatesアルゴリズム）
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
     // ▼ シャッフルアニメーションを開始し、名前を表示する
     function startShuffling(finalName) {
       let shuffleInterval = null;
       const shuffleDuration = 2000; // アニメーションの継続時間（ミリ秒）
-      const shuffleSpeed = 50; // シャッフルの速度（ミリ秒）
+      const shuffleSpeed = 100; // シャッフルの速度（ミリ秒）
 
       latestNameDiv.style.display = 'flex';
       latestNameDiv.classList.add('shuffling');
 
-      // シャッフル用の文字セット
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzあいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
+      // 選出された名前の文字を配列に変換
+      const nameChars = finalName.split('');
 
       // シャッフル開始
       shuffleInterval = setInterval(() => {
-        let shuffledText = '';
-        for (let i = 0; i < finalName.length; i++) {
-          shuffledText += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        latestNameDiv.textContent = shuffledText;
+        // 文字をランダムに並び替え
+        const shuffledChars = shuffleArray([...nameChars]);
+        latestNameDiv.textContent = shuffledChars.join('');
       }, shuffleSpeed);
 
       // シャッフル終了後に最終名を表示
