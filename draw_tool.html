@@ -213,9 +213,13 @@
       // 抽選可能な名前リストを作成
       const availableNames = nameList.filter(name => !drawnNames.includes(name));
 
-      // ランダムに1つ選ぶ
-      const randomIndex = Math.floor(Math.random() * availableNames.length);
-      const selectedName = availableNames[randomIndex];
+      if (availableNames.length === 0) {
+        messageDiv.textContent = "抽選可能な名前がありません。";
+        return;
+      }
+
+      // ランダムに1つ選ぶ（アニメーション後に決定）
+      const selectedName = availableNames[Math.floor(Math.random() * availableNames.length)];
 
       // シャッフルアニメーションを開始
       startShuffling(selectedName);
@@ -378,15 +382,6 @@
       }
     }
 
-    // ▼ 配列をシャッフルするヘルパー関数（Fisher-Yatesアルゴリズム）
-    function shuffleArray(array) {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-      }
-      return array;
-    }
-
     // ▼ シャッフルアニメーションを開始し、名前を表示する
     function startShuffling(finalName) {
       let shuffleInterval = null;
@@ -395,15 +390,16 @@
 
       latestNameDiv.style.display = 'flex';
       latestNameDiv.classList.add('shuffling');
+      latestNameDiv.textContent = '抽選中...';
 
-      // 選出された名前の文字を配列に変換
-      const nameChars = finalName.split('');
+      // 抽選可能な名前リストを作成
+      const availableNames = nameList.filter(name => !drawnNames.includes(name));
 
       // シャッフル開始
       shuffleInterval = setInterval(() => {
-        // 文字をランダムに並び替え
-        const shuffledChars = shuffleArray([...nameChars]);
-        latestNameDiv.textContent = shuffledChars.join('');
+        const randomIndex = Math.floor(Math.random() * availableNames.length);
+        const currentName = availableNames[randomIndex];
+        latestNameDiv.textContent = currentName;
       }, shuffleSpeed);
 
       // シャッフル終了後に最終名を表示
