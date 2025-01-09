@@ -142,6 +142,43 @@
       max-height: 90%;
       margin-top: 5%;
     }
+
+    /* ルールポップアップのスタイル */
+    #rulesPopup {
+      display: none; /* 初期は非表示 */
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.7);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #rulesPopupContent {
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 90%;
+      max-height: 80%;
+      overflow-y: auto;
+      text-align: center;
+      position: relative;
+    }
+    #rulesPopupContent h2 {
+      margin-top: 0;
+    }
+    #closePopupBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #ff5c5c;
+      border: none;
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -167,8 +204,21 @@
   <img src="bingo.png" alt="BINGO">
 </div>
 
+<!-- ルールポップアップ -->
+<div id="rulesPopup">
+  <div id="rulesPopupContent">
+    <button id="closePopupBtn">閉じる</button>
+    <h2>ビンゴゲームのルール</h2>
+    <p>
+      会の終盤でビンゴを行ないます。<br>
+      当たりそうな名前を選び、9マスを埋めましょう。<br>
+      一度「確定」を押すと、選択内容を変更できなくなります。
+    </p>
+  </div>
+</div>
+
 <script>
-/** ▼ 3x3 用の名前リスト(例: 9名) */
+/** ▼ 3x3 用の名前リスト(例: 16名) */
 const nameList = [
   "けいじろう",
   "こうすけ",
@@ -192,6 +242,7 @@ const nameList = [
 const STORAGE_KEY_NAMES = "bingoNames";
 const STORAGE_KEY_LOCKED = "bingoLocked";
 const STORAGE_KEY_MARKS = "bingoMarks";
+const STORAGE_KEY_RULES_SHOWN = "rulesShown"; // ルール表示フラグ
 
 /** ▼ 3x3 なのでマス数は9 */
 const CELL_COUNT = 9;
@@ -205,11 +256,15 @@ const reachText = document.getElementById("reachText");
 const readyText = document.getElementById("readyText");
 const bingoOverlay = document.getElementById("bingoOverlay");
 
+const rulesPopup = document.getElementById("rulesPopup");
+const closePopupBtn = document.getElementById("closePopupBtn");
+
 /** ▼ ページロード時の処理 */
 window.addEventListener("DOMContentLoaded", () => {
   initBoard();
   loadState();
   updateUI();
+  showRulesPopupIfNeeded();
 });
 
 /** ▼ ボード初期化 */
@@ -575,6 +630,20 @@ function hideBingoOverlay() {
 function updateUI() {
   checkReachAndBingo();
 }
+
+/** ▼ ルールポップアップを表示するか確認 */
+function showRulesPopupIfNeeded() {
+  const rulesShown = localStorage.getItem(STORAGE_KEY_RULES_SHOWN);
+  if (!rulesShown) {
+    rulesPopup.style.display = "flex";
+  }
+}
+
+/** ▼ ルールポップアップを閉じる */
+closePopupBtn.addEventListener("click", () => {
+  rulesPopup.style.display = "none";
+  localStorage.setItem(STORAGE_KEY_RULES_SHOWN, "true");
+});
 </script>
 </body>
 </html>
