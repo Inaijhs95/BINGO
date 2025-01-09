@@ -210,9 +210,10 @@
     <button id="closePopupBtn">閉じる</button>
     <h2>ビンゴゲームのルール</h2>
     <p>
-      のちほど、ビンゴを行ないます。<br>
-      当たりそうな名前を選び、9マスを埋めましょう。<br>
-      一度「確定」を押すと、選択内容を変更できなくなります。
+      20:00までに<br>
+      参加者の名前を選び、9マスを埋めましょう。<br>
+      「決定」を押すと、準備完了です。<br>
+      「決定」後は選択内容を変更できません。
     </p>
   </div>
 </div>
@@ -237,7 +238,11 @@ const nameList = [
   "こうよう",
   "しょうた",
 ];
+// 日本語のロケールを指定してソート
+nameList.sort((a, b) => a.localeCompare(b, 'ja'));
 
+console.log(nameList);
+  
 /** ▼ ローカルストレージキー */
 const STORAGE_KEY_NAMES = "bingoNames";
 const STORAGE_KEY_LOCKED = "bingoLocked";
