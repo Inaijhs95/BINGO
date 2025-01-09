@@ -48,7 +48,7 @@
       list-style-type: none;
       padding: 0;
       max-width: 400px;
-      margin: 0 auto;
+      margin: 20px auto 0 auto;
       text-align: left;
     }
     #drawnNames li {
@@ -96,6 +96,30 @@
     #timer.danger {
       color: #dc3545; /* 赤色 */
     }
+    /* 最新抽選結果のスタイル */
+    #latestName {
+      margin: 20px 0;
+      font-size: 2em;
+      padding: 15px;
+      border-radius: 5px;
+      background-color: #f8f9fa;
+      border: 2px solid #007bff;
+      min-height: 50px;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+      position: relative;
+      overflow: hidden;
+    }
+    /* シャッフル中のスタイル */
+    #latestName.shuffling {
+      border-color: #ffc107;
+      background-color: #fff3cd;
+    }
   </style>
 </head>
 <body>
@@ -104,6 +128,9 @@
 
   <!-- タイマー表示エリアを一番上に移動 -->
   <div id="timer" style="display: none;">00:00</div>
+
+  <!-- 最新抽選結果表示エリアを追加 -->
+  <div id="latestName">名前がここに表示されます</div>
 
   <div class="btnArea">
     <button id="drawButton">抽選する</button>
@@ -136,7 +163,8 @@
       "ひろふみ", 
       "しょうた",
     ];
-   
+    // 日本語のロケールを指定してソート
+    nameList.sort((a, b) => a.localeCompare(b, 'ja'));
     
     console.log(nameList);
     // ▼ ローカルストレージキー
@@ -155,6 +183,7 @@
     const drawnNamesList = document.getElementById('drawnNames');
     const messageDiv = document.getElementById('message');
     const timerDiv = document.getElementById('timer');
+    const latestNameDiv = document.getElementById('latestName');
 
     // ▼ ページロード時の処理
     window.addEventListener('DOMContentLoaded', () => {
@@ -163,6 +192,7 @@
       updateButtons();
       if (drawnNames.length > 0) {
         startTimer();
+        displayLatestName();
       }
     });
 
@@ -175,6 +205,11 @@
         return;
       }
 
+      // 抽選ボタンを一時的に無効化
+      drawButton.disabled = true;
+      resetButton.disabled = true;
+      messageDiv.textContent = "";
+
       // 抽選可能な名前リストを作成
       const availableNames = nameList.filter(name => !drawnNames.includes(name));
 
@@ -182,50 +217,8 @@
       const randomIndex = Math.floor(Math.random() * availableNames.length);
       const selectedName = availableNames[randomIndex];
 
-      // 抽選済みリストの先頭に追加
-      drawnNames.unshift(selectedName);
-
-      // 抽選結果を画面に表示（最新を上に）
-      const listItem = document.createElement('li');
-
-      // 抽選順に番号を付ける（最新が1番）
-      const numberSpan = document.createElement('span');
-      numberSpan.className = 'number';
-      numberSpan.textContent = (1) + '.'; // 最新は1
-
-      const nameSpan = document.createElement('span');
-      nameSpan.textContent = selectedName;
-
-      listItem.appendChild(numberSpan);
-      listItem.appendChild(nameSpan);
-
-      // 抽選リストの先頭に挿入
-      drawnNamesList.insertBefore(listItem, drawnNamesList.firstChild);
-
-      // 抽選結果に視覚的強調を適用
-      listItem.classList.add('highlight');
-      setTimeout(() => {
-        listItem.classList.remove('highlight');
-      }, 1000); // 1秒後に強調を解除
-
-      // 抽選済み名前をローカルストレージに保存
-      saveDrawnNames();
-
-      // タイマーを開始（最初の抽選時のみ）
-      if (drawnNames.length === 1) {
-        startTimer();
-      }
-
-      // 全員抽選されたかチェック
-      if (drawnNames.length >= nameList.length) {
-        drawButton.disabled = true;
-        messageDiv.textContent = "すべての名前が抽選されました。";
-      } else {
-        messageDiv.textContent = "";
-      }
-
-      updateButtons();
-      updateNumbering();
+      // シャッフルアニメーションを開始
+      startShuffling(selectedName);
     });
 
     // ▼ リセットボタンのクリックイベント
@@ -245,6 +238,11 @@
 
       // メッセージをクリア
       messageDiv.textContent = '';
+
+      // 最新抽選結果をクリア
+      latestNameDiv.style.display = 'none';
+      latestNameDiv.textContent = '名前がここに表示されます';
+      latestNameDiv.classList.remove('shuffling');
 
       // タイマーをリセット
       resetTimer();
@@ -294,6 +292,16 @@
         timerDiv.style.display = 'inline-block';
       } else {
         timerDiv.style.display = 'none';
+      }
+    }
+
+    // ▼ 最新抽選結果を表示する
+    function displayLatestName() {
+      if (drawnNames.length > 0) {
+        latestNameDiv.style.display = 'flex';
+        latestNameDiv.textContent = drawnNames[0];
+      } else {
+        latestNameDiv.style.display = 'none';
       }
     }
 
@@ -368,6 +376,53 @@
       } else {
         timerDiv.classList.remove('warning', 'danger');
       }
+    }
+
+    // ▼ シャッフルアニメーションを開始し、名前を表示する
+    function startShuffling(finalName) {
+      let shuffleInterval = null;
+      const shuffleDuration = 2000; // アニメーションの継続時間（ミリ秒）
+      const shuffleSpeed = 50; // シャッフルの速度（ミリ秒）
+
+      latestNameDiv.style.display = 'flex';
+      latestNameDiv.classList.add('shuffling');
+
+      // シャッフル用の文字セット
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzあいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん';
+
+      // シャッフル開始
+      shuffleInterval = setInterval(() => {
+        let shuffledText = '';
+        for (let i = 0; i < finalName.length; i++) {
+          shuffledText += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        latestNameDiv.textContent = shuffledText;
+      }, shuffleSpeed);
+
+      // シャッフル終了後に最終名を表示
+      setTimeout(() => {
+        clearInterval(shuffleInterval);
+        latestNameDiv.textContent = finalName;
+        latestNameDiv.classList.remove('shuffling');
+
+        // 抽選済みリストに追加
+        drawnNames.unshift(finalName);
+        renderDrawnNames();
+        saveDrawnNames();
+        updateButtons();
+        updateNumbering();
+
+        // 表示を保持
+        latestNameDiv.style.display = 'flex';
+
+        // ボタンの状態を再度更新
+        if (drawnNames.length < nameList.length) {
+          drawButton.disabled = false;
+          resetButton.disabled = false;
+        } else {
+          drawButton.disabled = true;
+        }
+      }, shuffleDuration);
     }
 
   </script>
