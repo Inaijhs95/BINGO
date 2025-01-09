@@ -115,7 +115,10 @@
       "ひろふみ", 
       "しょうた",
     ];
+// 日本語のロケールを指定してソート
+nameList.sort((a, b) => a.localeCompare(b, 'ja'));
 
+console.log(nameList);
     // ▼ ローカルストレージキー
     const STORAGE_KEY_DRAWN = "drawnNames";
 
