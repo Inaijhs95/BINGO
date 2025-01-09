@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <!-- スマホ向けレスポンシブ指定 -->
   <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-  <title>4x4ビンゴ</title>
+  <title>3x3ビンゴ</title>
   <style>
     html, body {
       margin: 0; padding: 0;
@@ -31,13 +31,13 @@
       margin: 10px 0;
       min-height: 1.2em;
     }
-    /* 4x4 ボード */
+    /* 3x3 ボード */
     .board {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr); /* 4から3に変更 */
       grid-gap: 8px;
       width: 100%;
-      max-width: 500px;
+      max-width: 450px; /* 必要に応じて調整 */
       margin-bottom: 15px;
     }
     .cell {
@@ -46,7 +46,7 @@
       border: 1px solid #ccc;
       border-radius: 5px;
       overflow: hidden;
-      padding-top: 70%;
+      padding-top: 100%; /* 正方形に調整 */
     }
     .cellContent {
       position: absolute;
@@ -146,7 +146,7 @@
 </head>
 <body>
 <div id="app">
-  <h1>4×4 ビンゴ</h1>
+  <h1>3×3 ビンゴ</h1> <!-- タイトルも変更 -->
   <div id="errorMsg"></div>
 
   <div class="board" id="board"></div>
@@ -168,7 +168,7 @@
 </div>
 
 <script>
-/** ▼ 4x4 用の名前リスト(例: 16名) */
+/** ▼ 3x3 用の名前リスト(例: 9名) */
 const nameList = [
   "けいじろう",
   "こうすけ",
@@ -193,8 +193,8 @@ const STORAGE_KEY_NAMES = "bingoNames";
 const STORAGE_KEY_LOCKED = "bingoLocked";
 const STORAGE_KEY_MARKS = "bingoMarks";
 
-/** ▼ 4x4 なのでマス数は16 */
-const CELL_COUNT = 16;
+/** ▼ 3x3 なのでマス数は9 */
+const CELL_COUNT = 9;
 
 /** ▼ DOM取得 */
 const board = document.getElementById("board");
@@ -234,7 +234,7 @@ function initBoard() {
     cellContent.appendChild(select);
     cell.appendChild(cellContent);
 
-    // ※「touchend」は削除、代わりに「click」だけで動作させる
+    // 「click」だけで動作させる
     cell.addEventListener("click", () => onCellTapped(i));
 
     board.appendChild(cell);
@@ -409,7 +409,7 @@ decisionBtn.addEventListener("click", () => {
   // 全部選択されているかチェック
   for (let i = 0; i < selects.length; i++) {
     if (!selects[i].value) {
-      errorMsg.textContent = "Error: 16マスすべて人名を選択してください。";
+      errorMsg.textContent = "Error: 9マスすべて人名を選択してください。"; /* 16から9に変更 */
       return;
     }
     selectedNames.push(selects[i].value);
@@ -524,14 +524,14 @@ function removeMaruImage(index) {
 function checkReachAndBingo() {
   const marks = JSON.parse(localStorage.getItem(STORAGE_KEY_MARKS)) || Array(CELL_COUNT).fill(false);
 
-  // 4x4 用のライン(4つ揃えばBINGO)
+  // 3x3 用のライン(3つ揃えばBINGO)
   const lines = [
-    // 横4行
-    [0,1,2,3], [4,5,6,7], [8,9,10,11], [12,13,14,15],
-    // 縦4列
-    [0,4,8,12], [1,5,9,13], [2,6,10,14], [3,7,11,15],
+    // 横3行
+    [0,1,2], [3,4,5], [6,7,8],
+    // 縦3列
+    [0,3,6], [1,4,7], [2,5,8],
     // 斜め2本
-    [0,5,10,15], [3,6,9,12]
+    [0,4,8], [2,4,6]
   ];
 
   let isBingo = false;
@@ -539,9 +539,9 @@ function checkReachAndBingo() {
 
   for (const line of lines) {
     const count = line.filter(idx => marks[idx]).length;
-    if (count === 4) {
+    if (count === 3) {
       isBingo = true;
-    } else if (count === 3) {
+    } else if (count === 2) {
       // 残り1マスが未チェックならリーチ
       const notCheckedIndex = line.find(idx => !marks[idx]);
       if (notCheckedIndex !== undefined) {
