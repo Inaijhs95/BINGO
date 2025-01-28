@@ -25,6 +25,11 @@
       margin: 10px 0;
       font-size: 1.5em;
     }
+    #countdown {
+      margin: 10px 0;
+      font-size: 1.2em;
+      color: #333;
+    }
     #errorMsg {
       color: red;
       font-weight: bold;
@@ -103,6 +108,10 @@
     }
     #autoFillBtn {
       background-color: #f4b400;
+      color: #fff;
+    }
+    #autoFillAllBtn { /* 新しい全ておまかせボタンのスタイル */
+      background-color: #0f9d58;
       color: #fff;
     }
     button:disabled {
@@ -184,11 +193,16 @@
 <body>
 <div id="app">
   <h1>名前でビンゴ</h1> <!-- タイトルも変更 -->
+  
+  <!-- カウントダウン表示 -->
+  <div id="countdown">【5月3日20時頃開始予定 開始まで--時間--分--秒】</div>
+
   <div id="errorMsg"></div>
 
   <div class="board" id="board"></div>
 
-  <div class="btnArea">
+  <div class="btnArea" id="buttonArea">
+    <button id="autoFillAllBtn">全ておまかせ</button>
     <button id="autoFillBtn">おまかせ</button>
     <button id="decisionBtn">決定</button>
   </div>
@@ -211,9 +225,9 @@
     <h2>ビンゴのルール</h2>
     <p>
       参加者の名前を選び、9マスを埋めましょう。<br>
-「おまかせ」▶空きマスに名前を自動入力<br>
+      「全ておまかせ」▶全てのマスをランダムに入力<br>
+      「おまかせ」▶空きマスに名前を自動入力<br>
       「決定」▶準備完了
-      
     </p>
   </div>
 </div>
@@ -256,10 +270,14 @@ const CELL_COUNT = 9;
 const board = document.getElementById("board");
 const decisionBtn = document.getElementById("decisionBtn");
 const autoFillBtn = document.getElementById("autoFillBtn");
+const autoFillAllBtn = document.getElementById("autoFillAllBtn"); // 新しい全ておまかせボタン
 const errorMsg = document.getElementById("errorMsg");
 const reachText = document.getElementById("reachText");
 const readyText = document.getElementById("readyText");
 const bingoOverlay = document.getElementById("bingoOverlay");
+const buttonArea = document.getElementById("buttonArea"); // ボタンエリア全体
+
+const countdown = document.getElementById("countdown"); // カウントダウン要素
 
 const rulesPopup = document.getElementById("rulesPopup");
 const closePopupBtn = document.getElementById("closePopupBtn");
@@ -270,6 +288,7 @@ window.addEventListener("DOMContentLoaded", () => {
   loadState();
   updateUI();
   showRulesPopupIfNeeded();
+  startCountdown();
 });
 
 /** ▼ ボード初期化 */
@@ -304,11 +323,29 @@ function initBoard() {
   board.addEventListener("click", hideReadyTextOnce);
 }
 
-/** ▼ 「準備完了」の表示を隠す(一度でもマスをタップしたら) */
-function hideReadyTextOnce() {
-  if (readyText.style.display === "block") {
-    readyText.style.display = "none";
-    board.removeEventListener("click", hideReadyTextOnce);
+/** ▼ カウントダウンの開始 */
+function startCountdown() {
+  // 開始予定日時: 5月3日20時 (2025年)
+  const targetDate = new Date(2025, 4, 3, 20, 0, 0); // 月は0から始まるため5月は4
+  updateCountdown(); // 初回呼び出し
+  setInterval(updateCountdown, 1000); // 1秒ごとに更新
+
+  function updateCountdown() {
+    const now = new Date();
+    let diff = targetDate - now;
+
+    if (diff < 0) {
+      countdown.textContent = "【開始予定時刻を過ぎました】";
+      return;
+    }
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    diff -= hours * (1000 * 60 * 60);
+    const minutes = Math.floor(diff / (1000 * 60));
+    diff -= minutes * (1000 * 60);
+    const seconds = Math.floor(diff / 1000);
+
+    countdown.textContent = `【5月3日20時頃開始予定 開始まで${hours}時間${minutes}分${seconds}秒】`;
   }
 }
 
@@ -337,6 +374,7 @@ function loadState() {
     showReadyText(); // 既に決定済みなら"準備完了"も表示
     // セレクトをテキスト表示に切り替え
     renderFinalTextInCells();
+    hideButtons(); // ボタンを非表示にする
   }
 
   const marks = JSON.parse(localStorage.getItem(STORAGE_KEY_MARKS));
@@ -350,6 +388,17 @@ function loadState() {
 
   // 一度ロードしたら重複禁止のUIを更新
   updateSelectsDisableState();
+
+  // 全てのマスが埋まっているか確認
+  checkAllFilled();
+}
+
+/** ▼ 「準備完了」の表示を隠す(一度でもマスをタップしたら) */
+function hideReadyTextOnce() {
+  if (readyText.style.display === "block") {
+    readyText.style.display = "none";
+    board.removeEventListener("click", hideReadyTextOnce);
+  }
 }
 
 /** ▼ セレクト変更時（重複チェック＆ストレージ反映） */
@@ -368,6 +417,8 @@ function onSelectChanged(e) {
   storeSelectsInLocalStorage();
   // 他セレクトにも重複禁止を反映
   updateSelectsDisableState();
+  // 全て埋まっているか確認
+  checkAllFilled();
 }
 
 /** ▼ 既に他のマスで選択されているか判定 */
@@ -424,10 +475,14 @@ function updateSelectsDisableState() {
   }
 }
 
-/** ▼ おまかせボタン: 空白のセルをランダムに埋める */
+/** ▼ 「おまかせ」ボタン: 空白のセルをランダムに埋める */
 autoFillBtn.addEventListener("click", () => {
   const locked = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED)) || false;
   if (locked) return; // 既に決定していたら何もしない
+
+  if (!confirm("空いている枠のみ、ランダムで入力します。よろしいですか")) {
+    return;
+  }
 
   const selects = board.querySelectorAll("select");
   // すでに使われている名前を把握
@@ -448,7 +503,40 @@ autoFillBtn.addEventListener("click", () => {
   }
   storeSelectsInLocalStorage();
   updateSelectsDisableState();
+  checkAllFilled();
 });
+
+/** ▼ 新しい「全ておまかせ」ボタン: 全てのセルをランダムに埋める */
+autoFillAllBtn.addEventListener("click", () => {
+  const locked = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED)) || false;
+  if (locked) return; // 既に決定していたら何もしない
+
+  if (!confirm("現在の入力を無視し、全てランダムに入力します。よろしいですか")) {
+    return;
+  }
+
+  const selects = board.querySelectorAll("select");
+  // 使用可能な名前をシャッフル
+  const shuffledNames = shuffleArray([...nameList]);
+
+  // 全てのセルにランダムに名前を割り当てる
+  for (let i = 0; i < CELL_COUNT; i++) {
+    selects[i].value = shuffledNames[i] || "";
+  }
+
+  storeSelectsInLocalStorage();
+  updateSelectsDisableState();
+  checkAllFilled();
+});
+
+/** ▼ 配列をシャッフルする関数 */
+function shuffleArray(array) {
+  for (let i = array.length -1; i >0; i--) {
+    const j = Math.floor(Math.random() * (i+1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
 
 /** ▼ 「決定」ボタン押下 */
 decisionBtn.addEventListener("click", () => {
@@ -458,11 +546,10 @@ decisionBtn.addEventListener("click", () => {
   const locked = JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED)) || false;
   if (locked) return;
 
- // 確定確認
-if (!confirm("決定してよろしいですか？\n決定後は選択内容を変更できません。")) {
-  return;
-}
-
+  // 確定確認
+  if (!confirm("決定してよろしいですか？\n決定後は選択内容を変更できません。")) {
+    return;
+  }
 
   const selects = board.querySelectorAll("select");
   const selectedNames = [];
@@ -488,6 +575,9 @@ if (!confirm("決定してよろしいですか？\n決定後は選択内容を�
 
   // 準備完了を表示
   showReadyText();
+
+  // 全てのボタンを非表示にする
+  hideButtons();
 });
 
 /** ▼ 全セレクトを変更不可に */
@@ -498,8 +588,14 @@ function disableAllSelects() {
   });
 }
 
+/** ▼ 全てのボタンを非表示にする */
+function hideButtons() {
+  buttonArea.style.display = "none";
+}
+
 /** ▼ 「準備完了」を表示 */
-function showReadyText() {
+function showReadyText(message = "準備完了") {
+  readyText.textContent = message;
   readyText.style.display = "block";
 }
 
@@ -591,7 +687,7 @@ function checkReachAndBingo() {
     [0,1,2], [3,4,5], [6,7,8],
     // 縦3列
     [0,3,6], [1,4,7], [2,5,8],
-    // 斜め2本
+    //斜め2本
     [0,4,8], [2,4,6]
   ];
 
@@ -605,7 +701,7 @@ function checkReachAndBingo() {
     } else if (count === 2) {
       // 残り1マスが未チェックならリーチ
       const notCheckedIndex = line.find(idx => !marks[idx]);
-      if (notCheckedIndex !== undefined) {
+      if (notCheckedIndex !== undefined && !marks[notCheckedIndex]) {
         isReach = true;
       }
     }
@@ -618,6 +714,21 @@ function checkReachAndBingo() {
     reachText.textContent = "リーチ中！";
   } else {
     reachText.textContent = "";
+  }
+}
+
+/** ▼ 全てのマスが埋まっているか確認し、必要ならメッセージを表示 */
+function checkAllFilled() {
+  const selects = board.querySelectorAll("select");
+  const allFilled = Array.from(selects).every(sel => sel.value !== "");
+
+  if (allFilled && !JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED))) {
+    showReadyText("全枠埋め終わりました。この内容でよければ決定ボタンを押しましょう");
+  } else {
+    // 準備完了メッセージを元に戻す場合
+    if (readyText.textContent === "全枠埋め終わりました。この内容でよければ決定ボタンを押しましょう") {
+      readyText.style.display = "none";
+    }
   }
 }
 
