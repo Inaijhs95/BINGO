@@ -723,10 +723,10 @@ function checkAllFilled() {
   const allFilled = Array.from(selects).every(sel => sel.value !== "");
 
   if (allFilled && !JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED))) {
-    showReadyText("全枠埋め終わりました。この内容でよければ決定ボタンを押しましょう");
+    showReadyText("この内容でよければ決定ボタンを押しましょう");
   } else {
     // 準備完了メッセージを元に戻す場合
-    if (readyText.textContent === "全枠埋め終わりました。この内容でよければ決定ボタンを押しましょう") {
+    if (readyText.textContent === "この内容でよければ決定ボタンを押しましょう") {
       readyText.style.display = "none";
     }
   }
