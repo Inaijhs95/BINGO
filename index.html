@@ -27,8 +27,8 @@
     }
     #countdown {
       margin: 10px 0;
-      font-size: 1.2em;
-      color: #333;
+      font-size: 0.5em; /* フォントサイズを半分以下に変更 */
+      color: #aaa; /* 色を薄い灰色に変更 */
     }
     #errorMsg {
       color: red;
@@ -723,10 +723,10 @@ function checkAllFilled() {
   const allFilled = Array.from(selects).every(sel => sel.value !== "");
 
   if (allFilled && !JSON.parse(localStorage.getItem(STORAGE_KEY_LOCKED))) {
-    showReadyText("この内容でよければ決定ボタンを押しましょう");
+    showReadyText("全枠埋め終わりました。この内容でよければ決定ボタンを押しましょう");
   } else {
     // 準備完了メッセージを元に戻す場合
-    if (readyText.textContent === "この内容でよければ決定ボタンを押しましょう") {
+    if (readyText.textContent === "全枠埋め終わりました。この内容でよければ決定ボタンを押しましょう") {
       readyText.style.display = "none";
     }
   }
